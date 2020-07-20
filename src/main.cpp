@@ -1,41 +1,46 @@
 #include <ESP8266WiFi.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
 #include <ESP8266HTTPClient.h>
 
-const char* ssid = "*****";
-const char* password = "*****";
 const char* url = "http://monitor-actividad.herokuapp.com/actualizar";
 const char* host = "monitor-actividad.herokuapp.com";
-const char* payload = "{\"monitorId\":*****}";
+const char* payload = "{\"monitorId\":*****}"; // <- Reemplazar los asteriscos por el código de identificación del usuario de Telegram
 const int periodoSolicitudMilis = 15*60*1000;
 
-IPAddress ip;
+//IPAddress ip;
 
 void setup() {
   Serial.begin(9600);
-  delay(10);
-
-  // Configuración del GPIO2
-  pinMode(2, OUTPUT);
-  digitalWrite(2, LOW);
-
-  Serial.println();
-  Serial.println();
-  Serial.println("Conectandose a la red: ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi conectado");
   
-  ip = WiFi.localIP();
-  Serial.print("IP:");
-  Serial.println(ip);
+  // Creamos una instancia de la clase WiFiManager
+  WiFiManager wifiManager;
+ 
+  // Descomentar para resetear configuración
+  //wifiManager.resetSettings();
+ 
+  // Creamos AP y portal cautivo
+  wifiManager.autoConnect("ESP8266Temp");
+
+  // Serial.println();
+  // Serial.println();
+  // Serial.println("Conectandose a la red: ");
+  // Serial.println(ssid);
+
+  // WiFi.begin(ssid, password);
+
+  // while(WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
+  //   Serial.print(".");
+  // }
+
+  // Serial.println("");
+  // Serial.println("WiFi conectado");
+  
+  // ip = WiFi.localIP();
+  // Serial.print("IP:");
+  // Serial.println(ip);
 }
 
 void loop() {
