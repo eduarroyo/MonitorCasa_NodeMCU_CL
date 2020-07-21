@@ -27,15 +27,17 @@ void handleRoot() {
     if(webServer.args() == 1 && webServer.argName(0) == "id") {
         clienteId = webServer.arg("id");
         Serial.println("Nuevo ID de cliente establecido: " + clienteId);
-        webServer.send(200, clienteId.c_str());
+        webServer.send(200, "text/plain", clienteId.c_str());
     } else if(webServer.args() == 0) {
         if(clienteId.length() == 0) {
             Serial.println("El ID de cliente no ha sido configurado todavía.");
+            webServer.send(200, "text/plain", "El ID de cliente no ha sido configurado todavía.");
         } else {
             Serial.println("Su ID de cliente es " + clienteId);
+            webServer.send(200, "text/plain", ("Su ID de cliente es " + clienteId).c_str());
         }
     } else {
-        webServer.send(400, "Solicitud mal formada.");
+        webServer.send(400, "text/plain", "Solicitud mal formada.");
     }
 }
 
@@ -73,6 +75,7 @@ void setup() {
 void loop() {
     HTTPClient http;
     WiFiClient client;
+    IPAddress ip;
     char* datos = "";
 
     if(digitalRead(BT_FLASH) == HIGH) // Si el botón FLASH no está pulsado, realizar el proceso normal.
@@ -93,7 +96,6 @@ void loop() {
                 http.begin(client, url);
                 Serial.print("[HTTP] POST... ");
                 http.addHeader("Content-Type", "application/json");
-                http.addHeader("Cache-Control", "no-cache");
                 http.addHeader("Host", host);
                 int httpCode = http.POST(datos); // Realizar petición
                 ultimaSolicitud = millis(); // Guardar el instante de la última solicitud.
@@ -133,7 +135,7 @@ void loop() {
             }
                 
             // Por último manejar solicitudes http recibidas.
-            Serial.println("Atendiendo solicitudes web.");
+            Serial.println("Atendiendo solicitudes web en " + WiFi.localIP().toString());
             webServer.handleClient();
         }
     } else {
