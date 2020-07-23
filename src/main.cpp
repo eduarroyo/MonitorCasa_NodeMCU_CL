@@ -3,6 +3,8 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
 #include <ESP8266HTTPClient.h>
+#include <EEPROM.h>
+#define DIRECCION_EEPROM_CLIENTEID 512
 
 // Para usar el botón flash como entrada para borrar los datos de la wifi.
 #define BT_FLASH 0
@@ -13,9 +15,9 @@ const char *host = "monitor-actividad.herokuapp.com";
 const char *json = "{\"monitorId\":\"%s\"}"; // <- Reemplazar los asteriscos por el código de cliente del dispositivo
 const int periodoEjecucionMilis = 1000;
 const int tiempoPulsacionResetMillis = 3000; // Mantener siempre a un valor >= 3*periodoEjecucionMilis
-const int periodoSolicitudMilis = 10000;//15 * 60 * 1000;
+const int periodoSolicitudMilis = 15 * 60 * 1000;
 String clienteId = "";
-int ultimaSolicitud;
+int ultimaSolicitud = 0;
 
 // Creamos una instancia de la clase WiFiManager
 WiFiManager wifiManager;
@@ -23,11 +25,39 @@ WiFiManager wifiManager;
 // // Servidor para recibir comandos mediante solicitudes HTTP.
 ESP8266WebServer webServer(80);
 
+void establecerClienteId(String clienteIdNuevo) {
+    clienteId = clienteIdNuevo;
+    EEPROM.begin(DIRECCION_EEPROM_CLIENTEID);
+    // Escribir en la EEPROM el clienteId y rellenar hasta 50 caracteres con espacios.
+    for(int n=0; n < 50; n++) {
+        EEPROM.write(n, n < clienteId.length() ? clienteId[n] : ' ');
+    }
+    EEPROM.commit();
+
+    Serial.print("clienteId guardado en la EEPROM: ");
+    Serial.println(clienteId.c_str());
+}
+
+void leerClienteId() {
+    clienteId = "";
+    EEPROM.begin(DIRECCION_EEPROM_CLIENTEID);
+    for(int n = 0; n < 50; n++) {
+        clienteId += char(EEPROM.read(n));
+    }
+
+    // Quitar espacios al final.
+    clienteId.trim();
+
+    Serial.print("clienteId leido de la EEPROM: ");
+    Serial.println(clienteId.c_str());
+}
+
 void handleRoot() {
     if(webServer.args() == 1 && webServer.argName(0) == "id") {
-        clienteId = webServer.arg("id");
+        establecerClienteId(webServer.arg("id"));
         Serial.println("Nuevo ID de cliente establecido: " + clienteId);
         webServer.send(200, "text/plain", clienteId.c_str());
+        ultimaSolicitud = 0; // Para que envíe una actualización en el siguiente ciclo.
     } else if(webServer.args() == 0) {
         if(clienteId.length() == 0) {
             Serial.println("El ID de cliente no ha sido configurado todavía.");
@@ -51,6 +81,8 @@ void InitServer() {
     webServer.on("/", handleRoot);
     // Ruteo para URI desconocida
     webServer.onNotFound(handleNotFound);
+
+    leerClienteId();
 
     // Iniciar servidor
     webServer.begin();
@@ -92,11 +124,16 @@ void loop() {
                 Serial.println("El ID de cliente no ha sido configurado todavía.");
             } else if(millis() - ultimaSolicitud > periodoSolicitudMilis) { // Ha transcurrido el periodo desde la última solicitud.
                 sprintf(datos, json, clienteId.c_str()); // Componer la cadena JSON que enviamos en el POST.
-                Serial.println("Enviando actualización: " + String(datos));
+                Serial.println("Enviando actualización: ");
+                Serial.println("URL:" + String(url));
+                Serial.println("HOST:" + String(host));
+                Serial.println("Contenido: " + String(datos));
                 http.begin(client, url);
-                Serial.print("[HTTP] POST... ");
                 http.addHeader("Content-Type", "application/json");
+                http.addHeader("Cache-Control", "no-cache");
+                http.addHeader("Postman-Token", "aa4d3067-6270-4657-be16-804286c70dae");
                 http.addHeader("Host", host);
+                Serial.print("[HTTP] POST... ");
                 int httpCode = http.POST(datos); // Realizar petición
                 ultimaSolicitud = millis(); // Guardar el instante de la última solicitud.
                 if(httpCode == 200) {
