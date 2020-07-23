@@ -29,7 +29,7 @@ void establecerClienteId(String clienteIdNuevo) {
     clienteId = clienteIdNuevo;
     EEPROM.begin(DIRECCION_EEPROM_CLIENTEID);
     // Escribir en la EEPROM el clienteId y rellenar hasta 50 caracteres con espacios.
-    for(int n=0; n < 50; n++) {
+    for(unsigned int n=0; n < 50; n++) {
         EEPROM.write(n, n < clienteId.length() ? clienteId[n] : ' ');
     }
     EEPROM.commit();
@@ -71,7 +71,7 @@ void handleRoot() {
     }
 }
 
-// Funcion que se ejecutara en URI desconocida
+// Función que se ejecutara en URI desconocida
 void handleNotFound() {
     webServer.send(404, "text/plain", "Not found");
 }
